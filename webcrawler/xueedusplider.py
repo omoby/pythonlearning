@@ -2,6 +2,11 @@ import re
 import urllib.request
 import urllib.error
 import csv
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+"""
+抓取课程splider
+"""
 '''
 获取淘宝教育课程首页的内容，包括所有课程分类列表
 课程列表首页：url = "https://i.xue.taobao.com/list.htm?spm=a2174.7365761.0.0.l8eeIN"
@@ -10,58 +15,45 @@ import csv
 '''
 def getfaceage():
     url = "https://i.xue.taobao.com/list.htm?spm=a2174.7365761.0.0.l8eeIN"
-    # url = "/home/hadoop/webcrawler/xue.html"
-    print(url)
-    headers = {"User-Agent",
-               "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36"}
+
+    headers = {'user-agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.9 Safari/537.36'}
     opener = urllib.request.build_opener()
     opener.addheaders = [headers]
     urllib.request.install_opener(opener)
-    file = urllib.request.urlopen(url)
+    file = ''
+    try:
+        file = urllib.request.urlopen(url)
+    except urllib.error.HTTPError as e:
+        print('facepageurl: ' + url)
+        print(e.reason)
     data = file.read()
-    data = data.decode('gbk')
-    print(data)
-    # html1 = urllib.request.urlopen(url).read()
-    # html1 = str(html1)
-    # pat1 = '<div  '
-    # pat1 = '<div class="filters".+? <div class="sort-bar"'
-    # result1 = re.compile(pat1).findall(data)
-    # print(result1)
-    # result1 = result1[0]
-    # print(result1)
+    try:
+        data = data.decode("gbk")
+    except UnicodeDecodeError as e:
+        print('facepageurl: ' + url)
+        print(data)
+        print(e.reason)
+
     pat2 = '<div class="filter-row[\s\S]+? </div>'
     keclass = re.compile(pat2).findall(data)
-    print("----"*20)
-    print(keclass)
-    print("----" * 20)
     patspanurl = '<span class="cat".+? href="//(.+?)">(.+?)</a></span>'
     patliurl = '<li class="sm-item"><a href="//(.+?)">(.+?)</a></li>'
-    alllist=[]
+    alllist = []
     spanlist = []
     lilist = []
     for subdetail in keclass:
         span = re.compile(patspanurl).findall(subdetail)
         li = re.compile(patliurl).findall(subdetail)
-        print(subdetail)
-        print(span)
-        print(li)
         url = span[0][0]
-        # name = eval(repr(span[0][1]).replace("\\\\","\\")).encode('raw_unicode_escape').decode("gbk")
         name = span[0][1]
-        spanlist.append(url+"@"+name)
-        print(url)
-        print(name)
+        spanlist.append(url + "@" + name)
         for sub in li:
-            suburl = sub[0].replace("&amp;","&")
-            # subname = eval(repr(sub[1]).replace("\\\\", "\\")).encode('raw_unicode_escape').decode("gbk")
+            suburl = sub[0].replace("&amp;", "&")
             subname = sub[1]
-            lilist.append(suburl+"||"+subname)
-        alllist.append(spanlist+lilist)
-        print(spanlist)
-        print(lilist)
+            lilist.append(suburl + "||" + subname)
+        alllist.append(spanlist + lilist)
         spanlist.clear()
         lilist.clear()
-    print(alllist)
     return alllist
 
 
@@ -117,16 +109,28 @@ def saveascsv(datalist,writetype):
 def getcommentcount(url,suburl):
     req = urllib.request.Request(suburl)
     # 添加header信息
-    req.add_header("User-Agent","Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36")
+    req.add_header('user-agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.9 Safari/537.36')
     # 由于请求的连接是建立在详情页上面的，需要在header上添加详情页的信息，否则请求不到数据
     req.add_header("Referer",url)
-    file = urllib.request.urlopen(req)
-    data = file.read()
-    data = data.decode("gbk")
+    file = ''
+    try:
+        file = urllib.request.urlopen(req)
+    except urllib.error.HTTPError as e:
+        print('commentcountpreurl: '+url)
+        print(e.reason)
     # 匹配评论数的正则表达式
     patcommenttotal = '"totalFull":(\d+)'
-    commenttotal = re.compile(patcommenttotal).findall(data)
-    return commenttotal[0]
+    data = file.read()
+    try:
+        data = data.decode("gbk")
+        commenttotal = re.compile(patcommenttotal).findall(data)
+        return commenttotal[0]
+    except UnicodeDecodeError as e:
+        print(suburl)
+        print(data)
+        print(e.reason)
+        return -1
+
 
 '''
 解析每一个中类的列表页面
@@ -141,199 +145,165 @@ https://i.xue.taobao.com/detail.htm?courseId=50335
 免费
 '''
 def analysiscourselist(url,pagenum,pageindex,prevname,subname):
-    # print("pagenum: "+str(pagenum))
-    # print("pageindex: "+str(pageindex))
     pageurl = "https://"
     if pageindex != 0:
         pageurl = pageurl + url+"&page="+str(pageindex)
     else:
         pageurl = pageurl+url
-    # print(pageurl)
     # 添加请求课程列表页的header信息
-    headers = {"User-Agent",
-               "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36"}
+    headers = {'user-agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.9 Safari/537.36'}
     opener = urllib.request.build_opener()
     opener.addheaders = [headers]
     urllib.request.install_opener(opener)
-    file = urllib.request.urlopen(pageurl)
+    file = ''
+    try:
+        file = urllib.request.urlopen(pageurl)
+    except urllib.error.HTTPError as e:
+        print('pageurl: '+pageurl)
+        print(e.reason)
     data = file.read()
-    data = data.decode("gbk")
+    try:
+        data = data.decode("gbk")
 
-    # 匹配每一个列表页的正则表达式
-    patpagenum =  '<span class="num">1</span>/(\d+)'
-    if(pagenum==0):
-        pagenumlist = re.compile(patpagenum).findall(data)
-        pagenum = int(pagenumlist[0])
+        # 匹配每一个列表页的正则表达式
+        patpagenum =  '<span class="num">1</span>/(\d+)'
+        if(pagenum==0):
+            pagenumlist = re.compile(patpagenum).findall(data)
+            pagenum = int(pagenumlist[0])
 
-    # 匹配页面中的每一门课程正则表达式
-    patcourselist = '(<div class="course ">|<div class="course course-right">)([\s\S]+?)</div>\\r\\n\s*</div>\\r\\n\s*</div>'
-    # 获取到页面上的课程列表的div
-    pagelist = re.compile(patcourselist).findall(data)
+        # 匹配页面中的每一门课程正则表达式
+        patcourselist = '(<div class="course ">|<div class="course course-right">)([\s\S]+?)</div>\\r\\n\s*</div>\\r\\n\s*</div>'
+        # 获取到页面上的课程列表的div
+        pagelist = re.compile(patcourselist).findall(data)
 
-    # 匹配课程列表div中的课程地址正则表达式
-    patcourseulr = '<div class="name">\\r\\n\s*<a href="(//.+?)"'
-    # 匹配课程围观数正则表达式
-    patregistcount = '<span class="peo">[\s\S]+?(\d+)[\s\S]+?</span>'
+        # 匹配课程列表div中的课程地址正则表达式
+        patcourseulr = '<div class="name">\\r\\n\s*<a href="(//.+?)"'
+        # 匹配课程围观数正则表达式
+        patregistcount = '<span class="peo">[\s\S]+?(\d+)[\s\S]+?</span>'
 
-    # 遍历每一页的课程列表
-    for sub in pagelist:
-        print(sub)
-        value = sub[1]
-        # 获取到课程地址['https://i.xue.taobao.com/detail.htm?courseId=48092']
-        courseurllsit = re.compile(patcourseulr).findall(value)
-        # 获取到围观数['40']
-        registcountlist = re.compile(patregistcount).findall(value)
+        # 遍历每一页的课程列表
+        for sub in pagelist:
+            value = sub[1]
+            # 获取到课程地址['https://i.xue.taobao.com/detail.htm?courseId=48092']
+            courseurllsit = re.compile(patcourseulr).findall(value)
+            # 获取到围观数['40']
+            registcountlist = re.compile(patregistcount).findall(value)
 
-        # 存在课程地址继续遍历课程详情页面
-        if len(courseurllsit) == 1:
-            courseurl = "https:" + courseurllsit[0]
-            headers = {"User-Agent",
-                       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36"}
-            opener = urllib.request.build_opener()
-            opener.addheaders = [headers]
-            urllib.request.install_opener(opener)
-            file = urllib.request.urlopen(courseurl)
-            data = file.read()
-            data = data.decode("gbk")
+            # 存在课程地址继续遍历课程详情页面
+            if len(courseurllsit) == 1:
+                courseurl = "https:" + courseurllsit[0]
+                headers = {'user-agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.9 Safari/537.36'}
+                opener = urllib.request.build_opener()
+                opener.addheaders = [headers]
+                urllib.request.install_opener(opener)
+                file = ''
+                try:
+                    file = urllib.request.urlopen(courseurl)
+                except urllib.error.HTTPError as e:
+                    print('courseurl: '+courseurl)
+                    print(e.reason)
+                data = file.read()
+                try:
+                    data = data.decode("gbk")
 
-            # 匹配现价正则表达式
-            patoriginPrice = '"originPrice":"(\d*\.?\d*)"'
-            # 匹配原价正则表达式
-            patpriceYuan = '"priceYuan":"(\d*\.?\d*)"'
-            # 匹配课程是否是免费正则表达式
-            patfreee  = '"freeCourse":(.+?),'
-            # 匹配课程订单正则表达式
-            patordercount = '"orderCount":(\d*\.?\d*)'
-            # 匹配讲师url正则表达式
-            patteatcherurl = '"teacherDetailUrl":"//(.+?)"'
-            # 匹配讲师简介正则表达式
-            patteatcherintro = '"teacherIntro":"(.+?)"'
-            # 匹配讲师昵称正则表达式
-            patteatchernick = '"teacherNick":"(.+?)"'
-            # 匹配评论详情页面url正则表达式
-            patcommenturl = '"evCommonApi":"//([\s\S]*?)"'
-            # 匹配店铺名正则表达式
-            patshopname = '"shopName":"(.+?)"'
-            # 匹配店铺url正则表达式
-            patshopurl = '"shopUrl":"//(.+?)"'
-            # 匹配课程名正则表达式
-            patcoursename = '"title":"(.+?)"'
+                    # 匹配现价正则表达式
+                    patoriginPrice = '"originPrice":"(\d*\.?\d*)"'
+                    # 匹配原价正则表达式
+                    patpriceYuan = '"priceYuan":"(\d*\.?\d*)"'
+                    # 匹配课程是否是免费正则表达式
+                    patfreee  = '"freeCourse":(.+?),'
+                    # 匹配课程订单正则表达式
+                    patordercount = '"orderCount":(\d*\.?\d*)'
+                    # 匹配讲师url正则表达式
+                    patteatcherurl = '"teacherDetailUrl":"//(.+?)"'
+                    # 匹配讲师简介正则表达式
+                    patteatcherintro = '"teacherIntro":"(.+?)"'
+                    # 匹配讲师昵称正则表达式
+                    patteatchernick = '"teacherNick":"(.+?)"'
+                    # 匹配评论详情页面url正则表达式
+                    patcommenturl = '"evCommonApi":"//([\s\S]*?)"'
+                    # 匹配店铺名正则表达式
+                    patshopname = '"shopName":"(.+?)"'
+                    # 匹配店铺url正则表达式
+                    patshopurl = '"shopUrl":"//(.+?)"'
+                    # 匹配课程名正则表达式
+                    patcoursename = '"title":"(.+?)"'
 
-            #  现价['1.00']
-            pricelist = re.compile(patpriceYuan).findall(data)
-            # 原价['1.00']
-            delpricelist = re.compile(patoriginPrice).findall(data)
-            # 是否免费['true'] or ['false']
-            freelist = re.compile(patfreee).findall(data)
-            # 学习人数['23']
-            ordercountlist = re.compile(patordercount).findall(data)
-            # 讲师url[’‘]
-            teatcherurllist = re.compile(patteatcherurl).findall(data)
-            # 讲师简介[]
-            teatcherintrolist = re.compile(patteatcherintro).findall(data)
-            # 讲师昵称[]
-            teatchernicklist = re.compile(patteatchernick).findall(data)
-            # 评论详情页地址[]
-            commenturllist = re.compile(patcommenturl).findall(data)
-            # 店铺名称[]
-            shopnamelist = re.compile(patshopname).findall(data)
-            # 店铺url
-            shopurllist = re.compile(patshopurl).findall(data)
-            # 课程名称
-            coursenamelist = re.compile(patcoursename).findall(data)
+                    #  现价['1.00']
+                    pricelist = re.compile(patpriceYuan).findall(data)
+                    # 原价['1.00']
+                    delpricelist = re.compile(patoriginPrice).findall(data)
+                    # 是否免费['true'] or ['false']
+                    freelist = re.compile(patfreee).findall(data)
+                    # 学习人数['23']
+                    ordercountlist = re.compile(patordercount).findall(data)
+                    # 讲师url[’‘]
+                    teatcherurllist = re.compile(patteatcherurl).findall(data)
+                    # 讲师简介[]
+                    teatcherintrolist = re.compile(patteatcherintro).findall(data)
+                    # 讲师昵称[]
+                    teatchernicklist = re.compile(patteatchernick).findall(data)
+                    # 评论详情页地址[]
+                    commenturllist = re.compile(patcommenturl).findall(data)
+                    # 店铺名称[]
+                    shopnamelist = re.compile(patshopname).findall(data)
+                    # 店铺url
+                    shopurllist = re.compile(patshopurl).findall(data)
+                    # 课程名称
+                    coursenamelist = re.compile(patcoursename).findall(data)
 
-            print("-----" * 20)
-            print("课程url:",end='')
-            courseurl='https:'+courseurllsit[0]
-            print(courseurl)
+                    courseurl='https:'+courseurllsit[0]
+                    coursename = coursenamelist[0]
+                    ordercount = ordercountlist[0]
+                    commentcount=''
 
-            print("课程名称：",end='')
-            coursename = coursenamelist[0]
-            print(coursename)
+                    if len(commenturllist)==0 or commenturllist[0]=='':
+                        commentcount = 0
+                    else:
+                        commenturl ='https://'+ commenturllist.pop(0)
+                        commentcount = getcommentcount(courseurl, commenturl)
 
-            print("课程销量：", end='')
-            ordercount = ordercountlist[0]
-            print(ordercount)
+                    shopname=''
+                    shopurl=''
+                    if len(shopnamelist)!=0 and shopnamelist[0] !='':
+                        shopname='机构：'+shopnamelist[0]
+                        shopurl ='https://'+ shopurllist[0]
+                    elif len(teatchernicklist)!=0 and teatchernicklist[0] != '':
+                        shopname = '讲师：'+teatchernicklist[0]
+                        shopurl = 'https://'+ teatcherurllist[0]
 
-            print("评论数：", end='')
-            commentcount=''
-            print(commenturllist)
-            if len(commenturllist)==0 or commenturllist[0]=='':
-                commentcount = 0
-            else:
-                commenturl ='https://'+ commenturllist.pop(0)
-                print(commenturl)
-                commentcount = getcommentcount(courseurl, commenturl)
-            print(commentcount)
-            shopname=''
-            shopurl=''
-            print(shopnamelist)
-            print(len(shopnamelist))
-            if len(shopnamelist)!=0 and shopnamelist[0] !='':
-                print("店铺名称：", end='')
-                shopname='机构：'+shopnamelist[0]
-                print(shopname)
-                print("店铺url：", end='')
-                shopurl ='https://'+ shopurllist[0]
-                print(shopurl)
-            elif len(teatchernicklist)!=0 and teatchernicklist[0] != '':
-                print("讲师：", end='')
-                shopname = '讲师：'+teatchernicklist[0]
-                print(shopname)
-                print("讲师url：", end='')
-                shopurl = 'https://'+ teatcherurllist[0]
-                print(shopurl)
-                print("讲师简介：", end='')
-                if len(teatcherintrolist)!=0:
-                    print(teatcherintrolist[0])
+                    registcount = registcountlist[0]
+                    delprice = 0.00
+                    if len(delpricelist)!=0 and delpricelist[0]!='':
+                        delprice = delpricelist[0]
 
-            print("课程大类：", end='')
-            print(prevname)
+                    newprice =-1
+                    if freelist.pop(0)=='false':
+                        newprice = pricelist[0]
 
-            print("课程中类：", end='')
-            print(subname)
-
-            print("围观数：", end='')
-            registcount = registcountlist[0]
-            print(registcount)
-
-            print(delpricelist)
-            delprice = 0.00
-            if len(delpricelist)==0 or delpricelist[0]=='':
-                print("课程原价：", end='')
-                print(delprice)
-            else:
-                delprice = delpricelist[0]
-                print(delprice)
-            print(pricelist)
-            print(freelist)
-            newprice =-1
-            if freelist.pop(0)=='false':
-
-                print("课程现价：", end='')
-                newprice = pricelist[0]
-                print(newprice)
-            else:
-                print("课程名称：", end='')
-                print('免费')
-            print("-----" * 20)
-            index = prevname+":"+subname+":"+str(pagenum)+":"+str(pageindex)
-            row=[index,courseurl,coursename,ordercount,commentcount,shopname,shopurl,prevname,subname,registcount,delprice,newprice]
-            saveascsv(row,'a')
+                    row=[courseurl,coursename,ordercount,commentcount,shopname,shopurl,prevname,subname,registcount,delprice,newprice]
+                    saveascsv(row,'a')
+                except UnicodeDecodeError as e:
+                    print(courseurl)
+                    print(data)
+                    print(e.reason)
+    except UnicodeDecodeError as e:
+        print(pageurl)
+        print(data)
+        print(e.reason)
+        # return -1
     # 分类列表中有多页
     if pagenum > 1:
         index=0
         if(pageindex == 0):
             index = 2
         else:
-            # print(pageindex)
             index = pageindex +1
-            # print(index)
         if index <= pagenum:
             analysiscourselist(url,pagenum,index,prevname,subname)
 
 listall = getfaceage()
-# title = ['index','courseUrl','courseName','orderCount','commentCount','shopName','shopUrl','extensiveClass','concreteClass','registCount','originPrice','newPrice']
-# saveascsv(title,'w')
-# getdetailpage(listall)
+title = ['courseUrl','courseName','orderCount','commentCount','shopName','shopUrl','extensiveClass','concreteClass','registCount','originPrice','newPrice']
+saveascsv(title,'w')
+getdetailpage(listall)
 # analysiscourselist("i.xue.taobao.com/list.htm?firstCat=57206007",32,31,"语言学习线上培训",'')

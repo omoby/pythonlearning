@@ -3,6 +3,9 @@ import urllib.request
 import urllib.error
 import csv
 import  http.client
+"""
+将采集的数据保存为csv格式文件
+"""
 
 '''
 拆分每一个大类中的小类

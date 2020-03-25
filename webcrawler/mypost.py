@@ -1,6 +1,9 @@
 import urllib.request
-
 import urllib.parse
+"""
+练习设置post请求header
+"""
+
 url = "http://www.iqianyue.com/mypost"
 postdata = urllib.parse.urlencode({
     "name":"ceo@iqianque.com",

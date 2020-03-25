@@ -1,6 +1,9 @@
 import re
 import urllib.request
 import urllib.error
+"""
+联系抓取京东页面的图片
+"""
 
 def craw(url,page):
     print(url)
