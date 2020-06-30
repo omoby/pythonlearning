@@ -60,8 +60,8 @@ def get_consultarConvenio(url, code):
     #     user_agent = ip_pool.get_user_agent()
     #     headers['User-Agent'] = user_agent
     #     start = end
-        # print(f'proxy={g_proxy}')
-        # print(f'user_agent={user_agent}')
+    # print(f'proxy={g_proxy}')
+    # print(f'user_agent={user_agent}')
     # code += 1
     # url = 'http://www.aduanet.gob.pe/itarancel/arancelS01Alias?accion=consultarConvenio&cod_partida=201300010'
     cod_partida = re.compile(r'cod_partida=(\d*)').findall(url)
@@ -142,16 +142,19 @@ def get_json_data(data):
     prev_data = []
     fail_url = []
     success_url = []
-    fail_counter = 0
+    sucess_counter = 0
     for sub in result_data:
         time.sleep(random.randint(5, 10))
         content = get_consultarConvenio(sub.get('url'), 0)
-        # print(content)
-        if content == 'failed':
-            fail_counter += 1
-            print(f'TASK_URL={sub.get("url")}')
-            # 返回页面中显示页面不存在3三次任务该cookie失效，更新cookie失效的时间并切换cookie
+        counter = 0
+        while content == 'failed' and counter < 10:
+            counter += 1
+            content = get_consultarConvenio(sub.get('url'), 0)
+        if counter >= 10:
+            print(f'采集失败,TASK_URL={sub.get("url")}')
+            continue
         else:
+            sucess_counter += 1
             data = {
                 "attemptCount": sub.get('attemptCount'),
                 "content": content,
@@ -188,18 +191,18 @@ def get_json_data(data):
             prev_data.append(data)
             success_url.append((get_timestamp(), sub.get('url')))
 
-    result_total = result_total - fail_counter
+    fail_counter = result_total - sucess_counter
 
     if fail_counter != 0:
         print("爬取失败[ %d ]个页面！" % (fail_counter))
         # connection.mark_not_exit_url(fail_url)
 
-    if result_total == 0:
+    if sucess_counter == 0:
         return (success_url, result_total)
     else:
         return_data = {
             "data": prev_data,
-            "total": result_total
+            "total": sucess_counter
         }
         # print(json.dumps(return_data))
         return (success_url, return_data)
