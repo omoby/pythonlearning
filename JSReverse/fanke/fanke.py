@@ -6,7 +6,7 @@ pwd = 'aa'
 
 
 def get_pwd():
-    with open('fanke.js') as f:
+    with open('fanke_2.js') as f:
         js_code = f.read()
     result = execjs.compile(js_code).call('get_pwd', pwd)
     f.close()
@@ -42,8 +42,8 @@ def login():
 
 
 def main():
-    login()
-    # get_pwd()
+    # login()
+    print(get_pwd())
 
 
 if __name__ == '__main__':
