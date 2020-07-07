@@ -142,6 +142,7 @@ class WaiMai(object):
                                 shop_list = self.parse_data(response_body)
                                 if 'failed' == shop_list:
                                     self.get_log().info(f'city={city_name},lng={long},lat={lat}，采集{index-1}页')
+                                    break
                                 else:
                                     for shop_l in shop_list:
                                         # print(shop_l)
