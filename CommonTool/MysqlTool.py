@@ -6,17 +6,25 @@ class MysqlUtil():
     Mysql工具类
     '''
 
+    def __init__(self, db_info):
+        self.host = db_info['host']
+        self.port = db_info['port']
+        self.user = db_info['user']
+        self.password = db_info['password']
+        self.db = db_info['db']
+
     def mysql_config(self):
         """
         mysql config
         :return:
         """
         infor = {
-            "host": "127.0.0.1",
-            "port": 3306,
-            "user": "root",
-            "password": "root",
-            "db": "testdb",
+            "host": self.host,
+            "port": self.port,
+            "db": self.db,
+            "user": self.user,
+            "password": self.password,
+
         }
         return infor
 
@@ -31,50 +39,48 @@ class MysqlUtil():
                                user=config.get('user'),
                                password=config.get('password'),
                                db=config.get('db'),
-                               # charset='utf8',
+                               charset='utf8',
                                )
         cursor = conn.cursor()
         return (conn, cursor)
 
-    def insert_data(self, data):
+    def insert_data(self, insert_sql, data):
         '''
         插入数据
         :param data:
         :return:
         '''
         conn, cursor = self.mysql_connect()
-        # print(data)
         try:
-            insert_sql = 'insert into user(user_name,user_age) values(%s,%s)'
-            # print(insert_sql)
+            # insert_sql = 'insert into user(user_name,user_age) values(%s,%s)'
+            # data = (("user1", 10), ('user1', 12), ("user1", 15))
             affected_rows = cursor.executemany(insert_sql, data)
             conn.commit()
-            print(f'成功插入[{affected_rows}]条数据！')
         except Exception as e:
             print(e)
         finally:
             cursor.close()
             conn.close()
+        return affected_rows
 
-    def select_data(self):
+    def select_data(self, select_sql):
         '''
         查询数据
         :return:
         '''
         conn, cursor = self.mysql_connect()
         try:
-            select_sql = 'select user_name, user_age from  user'
-            get_rows = cursor.execute(select_sql)
+            # select_sql = 'select * from user'
+            affected_rows = cursor.execute(select_sql)
             data = cursor.fetchall()
-            print(f'查询到[{get_rows}]条数据！')
         except Exception as e:
             print(e)
         finally:
             cursor.close()
             conn.close()
-        return data
+        return (affected_rows, data)
 
-    def update_data(self, data):
+    def update_data(self, update_sql, data):
         '''
         更新数据
         :param data:
@@ -83,17 +89,18 @@ class MysqlUtil():
         conn, cursor = self.mysql_connect()
 
         try:
-            update_sql = 'update user set user_age= %s where user_name= %s'
+            # update_sql = 'update user set user_age= %s where user_name= %s'
+            # data = (14, 'Tom')
             affected_rows = cursor.execute(update_sql, data)
             conn.commit()
-            print(f'更新了[{affected_rows}]条数据！')
         except Exception as e:
             print(e)
         finally:
             cursor.close()
             conn.close()
+        return affected_rows
 
-    def delete_data(self, data):
+    def delete_data(self, delete_sql, data):
         '''
         删除数据
         :param data:
@@ -101,19 +108,32 @@ class MysqlUtil():
         '''
         conn, cursor = self.mysql_connect()
         try:
-            delete_sql = 'delete from user where user_name=%s'
+            # delete_sql = 'delete from user where user_name=%s'
+            # data = ('Tom')
+            # or
+            # delete_sql = 'delete from user'
+            # data = None
             affected_rows = cursor.execute(delete_sql, data)
             conn.commit()
-            print(f'删除[{affected_rows}]条数据成功！')
         except Exception as e:
             print(e)
         finally:
             cursor.close()
             conn.close()
+        return affected_rows
 
 
-mysql_util = MysqlUtil()
-data = (("user1", 10), ('user1', 12), ("user1", 15))
+info = {
+    'host': '127.0.0.1',
+    'port': 3306,
+    'db': '',
+    'user': '',
+    'password': ''
+}
+
+mysql_util = MysqlUtil(info)
+
+# data = (("user1", 10), ('user1', 12), ("user1", 15))
 
 '''
  CREATE TABLE `user` (
@@ -123,13 +143,22 @@ data = (("user1", 10), ('user1', 12), ("user1", 15))
 '''
 
 
+# data = (
+#     ("Tom", 10), ("Joey", 12), ("Kanmi", 15), ('Tom', 10), ('Joey', 12), ('Kanmi', 15), ('user1', 13), ('user1', 13),
+#     ('user1', 13))
+
+
 def main():
-    # mysql_util.insert_data(data)
+    # mysql_util.insert_data('insert into user(user_name,user_age) values(%s,%s)',data)
     # data = mysql_util.select_data()
     # for sub in data:
     #     print(sub)
-    mysql_util.update_data((13, 'user1'))
+    # mysql_util.update_data((13, 'user1'))
     # mysql_util.delete_data('user1')
+    # print(mysql_util.select_data('select * from user'))
+    # print(mysql_util.update_data('update user set user_age= %s where user_name= %s', (15, 'Tom')))
+    # print(mysql_util.select_data('select * from user'))
+    print(mysql_util.delete_data('delete from user', None))
 
 
 if __name__ == '__main__':
